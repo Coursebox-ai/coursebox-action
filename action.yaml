@@ -1,0 +1,98 @@
+on:
+  workflow_call:
+    inputs:
+      runs_on:
+        type: string
+        required: false
+        default: ubuntu-latest
+    outputs:
+      image_tag_version:
+        description: 'Image tag version'
+        value: ${{ jobs.build.outputs.image_tag_version }}
+
+jobs:
+  build:
+    runs-on: ${{ inputs.runs_on }}
+
+    outputs:
+      image_tag_version: ${{ steps.build.outputs.image_tag_version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - id: auth
+        name: Google Authentication
+        uses: google-github-actions/auth@v0.6.0
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/${{ inputs.project_number }}/locations/global/workloadIdentityPools/github/providers/github-provider
+          service_account: github@${{ inputs.project }}.iam.gserviceaccount.com
+          access_token_lifetime: 1300s
+
+      - uses: docker/login-action@v1
+        name: Docker Authentication
+        with:
+          registry: ${{ inputs.region }}-docker.pkg.dev
+          username: oauth2accesstoken
+          password: "${{ steps.auth.outputs.access_token }}"
+
+      - uses: reecetech/version-increment@2024.10.1
+        name: Version Patch
+        id: version
+        with:
+          release_branch:  ${{ github.event_name != 'pull_request' &&  github.event.repository.default_branch || github.base_ref }}
+          scheme: semver
+          increment: patch
+
+      - uses: docker/metadata-action@v4
+        name: Prepare docker tag
+        id: image_tag
+        with:
+          images: ${{ github.event.repository.name }}
+          flavor: |
+            latest=false
+          tags: |
+            type=semver,priority=900,pattern={{raw}},value=${{ steps.version.outputs.v-version }},enable=${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/heads/release/hotfix-') }}
+
+    
+      - uses: docker/build-push-action@v3
+        name: Build And Push
+        with:
+          push: false # ${{ github.event_name != 'pull_request'}}
+          tags: ${{ steps.image_tag.outputs.tags }}
+
+      # - name: Build and export
+      #   uses: docker/build-push-action@v6
+      #   with:
+      #     push: false
+      #     tags: ${{ steps.image_tag.outputs.tags }}
+      #     outputs: type=docker,dest=${{ github.workspace }}/${{ steps.version.outputs.v-version }}.tar ## DELETE-ME-LATER
+
+      # - name: list tar files
+      #   shell: bash
+      #   run: |
+      #     ls -al ${{ github.workspace }}
+      
+
+      # - name: Upload artifact
+      #   # if: github.event_name != 'pull_request'
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: docker-image
+      #     path: ${{ github.workspace }}/${{ steps.version.outputs.v-version }}.tar
+
+      - name: Set env
+        id: tag
+        shell: bash
+        run: echo "DOCKER_IMAGE_TAG=${{ fromJSON(steps.image_tag.outputs.json).labels['org.opencontainers.image.version'] }}" >> $GITHUB_OUTPUT
+
+      - name: Job Summary
+        shell: bash
+        run: |
+          echo "### build version : ${{ fromJSON(steps.image_tag.outputs.json).labels['org.opencontainers.image.version'] }}" >> $GITHUB_STEP_SUMMARY
+
+
+
