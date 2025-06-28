@@ -5,6 +5,12 @@ on:
         type: string
         required: false
         default: ubuntu-latest
+      project:
+        type: string
+        required: true
+      project_number:
+        type: string
+        required: true
     outputs:
       image_tag_version:
         description: 'Image tag version'
