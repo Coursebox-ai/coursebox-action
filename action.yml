@@ -14,6 +14,10 @@ inputs:
   project_number:
     description: The Google Cloud project number.
     required: true
+  environment:
+    description: The environment for the Docker image (e.g., dev, staging, prod).
+    required: true
+    default: dev
   region:
     description: The Google Cloud region for Artifact Registry.
     required: true
