@@ -90,7 +90,7 @@ runs:
       name: Prepare docker tag
       id: image_tag
       with:
-        images: ${{ github.event.repository.name }}
+        images: ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project }}/${{ github.event.repository.name }}/${{ inputs.environment }}
         flavor: |
           latest=false
         tags: |
@@ -100,7 +100,7 @@ runs:
     - uses: docker/build-push-action@v3
       name: Build And Push
       with:
-        push: false # ${{ github.event_name != 'pull_request'}}
+        push: true # ${{ github.event_name != 'pull_request'}}
         tags: ${{ steps.image_tag.outputs.tags }}
 
     # - name: Build and export
