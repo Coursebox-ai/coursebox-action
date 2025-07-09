@@ -43,10 +43,10 @@ inputs:
     project_number:
       type: string
       required: true
-outputs:
-    image_tag_version:
-      description: 'Image tag version'
-      value: ${{ jobs.build.outputs.image_tag_version }}
+# outputs:
+#     image_tag_version:
+#       description: 'Image tag version'
+#       value: ${{ jobs.build.outputs.image_tag_version }}
 
 runs:
   using: 'composite'
