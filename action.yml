@@ -41,18 +41,21 @@ inputs:
     # allowed lifetime. 
     # If you need to change this value, make sure to update the access_token_lifetime input in the action
     # and the access_token_lifetime parameter in the google-github-actions/auth action.
-    project:
-      type: string
-      required: true
-    project_number:
-      type: string
-      required: true
-    workload_identity_pool_id:
-      description: The ID of the workload identity pool.
-      required: true
-    workload_identity_provider_id:
-      description: The ID of the workload identity provider.
-      required: true
+  workload_identity_pool_id:
+    description: The ID of the workload identity pool.
+    required: true
+  workload_identity_provider_id:
+    description: The ID of the workload identity provider.
+    required: true
+  organization:
+    description: The GitHub organization for the ArgoCD repository.
+    required: true
+  gitops_repository:
+    description: The name of the GitOps repository.
+    required: true
+  kustomize_directory:
+    description: The directory containing kustomize files.
+    required: true
 # outputs:
 #     image_tag_version:
 #       description: 'Image tag version'
@@ -100,7 +103,6 @@ runs:
         tags: |
           type=semver,priority=900,pattern={{raw}},value=${{ steps.version.outputs.v-version }},enable=${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/heads/release/hotfix-') }}
 
-  
     - uses: docker/build-push-action@v3
       name: Build And Push
       with:
@@ -137,5 +139,26 @@ runs:
       run: |
         echo "### build version : ${{ fromJSON(steps.image_tag.outputs.json).labels['org.opencontainers.image.version'] }}" >> $GITHUB_STEP_SUMMARY
 
+
+    - uses: actions/create-github-app-token@v1
+      id: app-token
+      name: Create github app token
+      with:
+        app-id: ${{ secrets.GH_APP_ID }}
+        private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+        owner: ${{ github.repository_owner }}
+        repositories: ${{ inputs.gitops_repository }}
+
+    - uses: actions/checkout@v4
+      name: Checkout ArgoCD repository
+      with:
+        token: ${{ steps.app-token.outputs.token }}
+        repository: ${{ inputs.organization }}/${{ inputs.gitops_repository }} #'Coursebox-ai/ArgoCD.git'
+        ref: "main"
+
+    - if: ${{ github.event_name != 'pull_request' && github.event.action != 'opened' }}
+      name: Edit kustomize tag
+      working-directory: ${{ inputs.kustomize_directory }}
+      run: kustomize edit set image ${{ steps.image_tag.outputs.tags }}
 
 
