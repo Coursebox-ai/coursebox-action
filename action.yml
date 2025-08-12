@@ -169,3 +169,23 @@ runs:
       run: kustomize edit set image ${{ steps.image_tag.outputs.tags }}
 
 
+      ## ONLY HAPPENS IN DEV
+  # STEP 10.1 - COMMIT TO ARGOCD
+    - name: Commit to ArgoCD
+      uses: stefanzweifel/git-auto-commit-action@v5
+      if: inputs.environment != 'europe' 
+      with:
+        commit_message: "${{github.event.repository.name}} - ${{ inputs.environment }} - ${{ fromJSON(steps.image_tag.outputs.json).labels['org.opencontainers.image.version'] }}"
+        branch: main
+        commit_options: '--no-verify --signoff'
+        commit_user_name: github-actions[bot]
+        commit_user_email: github-actions[bot]@users.noreply.github.com
+        commit_author: GitHub Actions <github-actions[bot]@users.noreply.github.com> # defaults to author of the commit that triggered the run
+        status_options: '--untracked-files=no'
+        add_options: '-u'
+        status_options: '--untracked-files=no'
+        add_options: '-u'
+        skip_dirty_check: false
+        skip_fetch: false
+        skip_checkout: false
+        disable_globbing: true
