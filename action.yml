@@ -163,6 +163,7 @@ runs:
         ref: "main"
 
     - if: ${{ github.event_name != 'pull_request' && github.event.action != 'opened' }}
+      shell: bash
       name: Edit kustomize tag
       working-directory: ${{ inputs.kustomize_directory }}
       run: kustomize edit set image ${{ steps.image_tag.outputs.tags }}
